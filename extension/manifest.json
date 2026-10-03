@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Ровный звук",
+  "version": "0.2.1",
+  "description": "Выравнивает громкость звука вкладки: поднимает тихие фрагменты и сдерживает громкие пики. Всё локально.",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "tabCapture", "offscreen", "storage", "tabs", "scripting"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Ровный звук", "default_popup": "popup.html" }
+}

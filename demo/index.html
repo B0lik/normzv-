@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ровный звук — проверка</title><link rel="stylesheet" href="/demo/style.css"></head>
+<body><main>
+  <p class="eyebrow">РОВНЫЙ ЗВУК / ТЕСТОВАЯ СТРАНИЦА</p>
+  <h1>От шёпота к громкому.<br>На одном уровне.</h1>
+  <p class="intro">Здесь можно проверить обработчик в браузере и послушать перепады громкости. Аудио синтезируется на устройстве.</p>
+  <section>
+    <h2>Проверка AudioWorklet</h2>
+    <p>Проверяет настоящий аудиопоток Chrome: −42, −6 и −30 dBFS, по 2 секунды. Вывод во время проверки беззвучный.</p>
+    <button id="smoke">Запустить проверку</button>
+    <pre id="result" aria-live="polite">Проверка ещё не запускалась.</pre>
+  </section>
+  <section>
+    <h2>Послушать перепады</h2>
+    <p>Начните с небольшой системной громкости. Тестовый тон меняет уровень каждые 4 секунды. Включите расширение для этой вкладки и сравните.</p>
+    <button id="tone">Воспроизвести тестовый тон</button>
+    <p id="tone-status" aria-live="polite">Тон выключен.</p>
+  </section>
+  <p class="footnote">Этот тест проверяет DSP. Захват вкладки и совместимость конкретного плеера проверяются после загрузки папки extension в Chrome.</p>
+</main><script type="module" src="/demo/demo.js"></script></body></html>

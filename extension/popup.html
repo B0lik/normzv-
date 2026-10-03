@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ровный звук</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 14v4m6-9v14m6-18v22m6-18v14m6-9v4"/></svg></span>
+      <div><h1>Ровный звук</h1><p class="subtitle">Тихое слышно. Громкое мягче.</p></div>
+      <span class="version">0.2.1</span>
+    </header>
+
+    <section class="session" aria-label="Текущая вкладка">
+      <div class="session-top"><span id="status" class="status">Подключаемся…</span><span class="local">На устройстве</span></div>
+      <p id="tab-title" class="tab-title">Определяем вкладку</p>
+      <button id="toggle" class="toggle" disabled>Загрузка…</button>
+      <p class="session-note">Обрабатывается весь звук этой вкладки.</p>
+    </section>
+
+    <section class="automatic-panel" aria-label="Автоподключение">
+      <div class="label-row"><h2>Автоподключение</h2><button id="auto-toggle" class="auto-switch" role="switch" aria-checked="false" aria-label="Автоподключение" disabled><span aria-hidden="true"></span></button></div>
+      <div class="auto-scopes" role="group" aria-label="Где подключаться автоматически">
+        <label><input type="radio" name="auto-scope" value="all" disabled>Все сайты</label>
+        <label><input type="radio" name="auto-scope" value="selected" checked disabled>Выбранные</label>
+      </div>
+      <div id="site-selection">
+        <ul id="site-list" class="site-list" aria-label="Выбранные сайты"></ul>
+        <form id="site-form" class="site-form">
+          <input id="site-input" type="text" placeholder="youtube.com или адрес сайта" aria-label="Сайт для автоподключения" maxlength="512" disabled>
+          <button id="site-add" type="submit" class="small-button" disabled>Добавить</button>
+        </form>
+        <button id="site-current" type="button" class="site-current" disabled>Добавить текущий сайт</button>
+      </div>
+      <p id="auto-status" class="description auto-status" aria-live="polite">Автоподключение выключено.</p>
+      <p class="auto-note">В новой вкладке нажмите значок расширения — это требование Chrome. Повторное нажатие может потребоваться после смены сайта.</p>
+    </section>
+
+    <section class="controls" aria-label="Настройки">
+      <div class="label-row"><h2>Выравнивание</h2><span class="hint">Сила эффекта</span></div>
+      <div class="modes" role="group" aria-label="Сила выравнивания">
+        <button data-mode="gentle" aria-pressed="false" disabled>Мягко</button>
+        <button data-mode="balanced" aria-pressed="false" disabled>Средне</button>
+        <button data-mode="strong" aria-pressed="true" disabled>Сильно</button>
+      </div>
+      <p id="mode-description" class="description">Максимально сближает тихие и громкие фрагменты.</p>
+      <div class="label-row volume-label"><label for="volume">Итоговая громкость</label><output id="volume-value" for="volume">50%</output></div>
+      <input id="volume" type="range" min="-30" max="-12" step="1" value="-18" disabled>
+      <div class="range-labels"><span>Тише</span><span>Громче</span></div>
+    </section>
+
+    <section class="meters" aria-label="Уровни звука">
+      <div class="label-row"><h2>Сейчас</h2><span id="gain" class="hint">Нет сигнала</span></div>
+      <div class="meter-row"><span>Вход</span><meter id="input-meter" min="-60" max="0" value="-60" aria-label="Входной уровень"></meter><span id="input-level" class="level">—</span></div>
+      <div class="meter-row"><span>Выход</span><meter id="output-meter" min="-60" max="0" value="-60" aria-label="Выходной уровень"></meter><span id="output-level" class="level">—</span></div>
+    </section>
+
+    <p id="error" class="error" role="alert" hidden></p>
+    <footer>Настройки общие для включённых вкладок.<br>В паузах усиление снижается, чтобы не разгонять шум.</footer>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+:root { font-family: "Segoe UI", system-ui, sans-serif; color: #e8f3ec; background: #111917; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 780px; margin: 60px auto; padding: 0 28px; }
+.eyebrow { color: #77e9b5; font-size: 12px; letter-spacing: 2px; }
+h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.15; letter-spacing: -1.5px; }
+p { color: #a2b7a9; line-height: 1.65; font-size: 14px; }
+.intro { max-width: 580px; font-size: 16px; }
+section { border: 1px solid #31483b; border-radius: 18px; padding: 24px; margin: 24px 0; background: #1b2821; }
+h2 { margin: 0; font-size: 19px; font-weight: 600; }
+button { padding: 12px 20px; border: 0; border-radius: 8px; background: #77e9b5; color: #142d1d; font: 600 13px "Segoe UI", sans-serif; cursor: pointer; }
+button:disabled { opacity: .5; }
+pre { white-space: pre-wrap; font-size: 12px; line-height: 1.65; padding: 16px; background: #111917; border-radius: 8px; color: #b8e4c9; margin: 18px 0 0; }
+.footnote { font-size: 12px; }

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Проверка выхода плеера из fullscreen</title>
+<style>
+  body { background: #13232a; color: #edf5f3; font: 18px system-ui; padding: 24px; }
+  #player { background: #20363e; padding: 24px; }
+  #player:fullscreen { box-sizing: border-box; width: 100%; height: 100%; }
+  button { padding: 14px; margin: 8px; font: inherit; }
+  iframe { display: block; width: 600px; height: 180px; border: 0; margin-top: 16px; }
+  pre { white-space: pre-wrap; }
+</style>
+<h1>Проверка выхода плеера из fullscreen</h1>
+<p>Настоящий Fullscreen API и рабочий наблюдатель расширения. Состояние окна Chrome имитируется; захвата звука нет.</p>
+<div id="player">
+  <button id="toggle">Полный экран / Выйти</button>
+  <p id="state"></p>
+  <pre id="events"></pre>
+  <iframe src="http://localhost:8765/demo/fullscreen-frame.html" allowfullscreen title="Плеер в другом origin"></iframe>
+</div>
+<script type="module">
+  import { createFullscreenManager } from '/extension/fullscreen.js';
+  const memory = {};
+  const windowState = { id: 4, state: 'maximized', focused: true };
+  let messages = [], queue = Promise.resolve();
+  function render() {
+    document.querySelector('#state').textContent = `DOM fullscreen: ${Boolean(document.fullscreenElement)}; окно (макет): ${windowState.state}`;
+    document.querySelector('#events').textContent = messages.join('\n');
+  }
+  const api = {
+    storage: { session: { get: async () => structuredClone(memory), set: async value => Object.assign(memory, value) } },
+    tabs: { get: async () => ({ id: 10, active: true, windowId: 4 }) },
+    windows: { get: async () => ({ ...windowState }), update: async (id, value) => Object.assign(windowState, value) },
+    scripting: { executeScript: async () => [{ frameId: 0, result: Boolean(document.fullscreenElement) }] },
+  };
+  const manager = createFullscreenManager(api, async () => true);
+  globalThis.chrome = { runtime: { sendMessage(message) {
+    messages.push(`player-fullscreen: ${message.fullscreen}`);
+    queue = queue.then(() => manager.pageChanged(10, message.fullscreen)).then(render);
+    return queue.then(() => ({ ok: true }));
+  } } };
+  const observer = document.createElement('script');
+  observer.src = '/extension/fullscreen-observer.js';
+  document.body.append(observer);
+  document.querySelector('#toggle').addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.querySelector('#player').requestFullscreen();
+    } catch (error) { messages.push(`ERROR: ${error.message}`); render(); }
+  });
+  render();
+</script>
+</html>

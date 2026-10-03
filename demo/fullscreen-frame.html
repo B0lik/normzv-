@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Вложенный плеер</title>
+<style>body { font: 18px system-ui; background: #284a50; color: white; padding: 16px; } button { padding: 14px; font: inherit; }</style>
+<button id="toggle">Полный экран iframe / Выйти</button>
+<script>
+  document.querySelector('#toggle').addEventListener('click', async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  });
+</script>
+</html>
