@@ -1,10 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Ровный звук",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Выравнивает громкость звука вкладки: поднимает тихие фрагменты и сдерживает громкие пики. Всё локально.",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "tabCapture", "offscreen", "storage", "tabs", "scripting"],
   "background": { "service_worker": "background.js", "type": "module" },
-  "action": { "default_title": "Ровный звук", "default_popup": "popup.html" }
+  "action": { "default_title": "Ровный звук", "default_popup": "popup.html" },
+  "commands": {
+    "volume-up": { "suggested_key": "Alt+Up", "description": "Громкость вкладки +10%" },
+    "volume-down": { "suggested_key": "Alt+Down", "description": "Громкость вкладки −10%" },
+    "volume-mute": { "suggested_key": "Alt+M", "description": "Выключить / вернуть звук вкладки" },
+    "volume-reset": { "description": "Сбросить громкость вкладки к 100%" },
+    "_execute_action": { "suggested_key": "Alt+Shift+V" }
+  }
 }

@@ -4,7 +4,7 @@ import { createController, backgroundMessage } from '../extension/background.js'
 
 function fixture() {
   const state = { exists: false, created: 0, captures: 0, sessions: new Set(), settings: undefined, badges: [], messages: [], fail: false,
-    memory: {}, injections: [], pageFullscreen: false, window: { id: 4, state: 'maximized', focused: true } };
+    memory: {}, local: {}, injections: [], pageFullscreen: false, window: { id: 4, state: 'maximized', focused: true } };
   const api = {
     scripting: { executeScript: async request => {
       assert.equal(state.sessions.has(request.target.tabId), true, 'attach after audio starts');
@@ -25,16 +25,22 @@ function fixture() {
           state.sessions.add(m.tabId);
         }
         if (m.type === 'stop') state.sessions.delete(m.tabId);
+        if (m.type === 'sessions') return { ok: true, sessions: [...state.sessions].map(tabId => ({ tabId, autoOwned: false })) };
         return { ok: true, active: state.sessions.has(m.tabId) };
       },
     },
-    tabs: { get: async id => ({ id, active: true, windowId: 4, url: state.url || 'https://example.org/watch' }) },
+    tabs: {
+      get: async id => ({ id, active: true, windowId: 4, url: state.url || 'https://example.org/watch' }),
+      query: async query => query.active ? [{ id: 1 }] : [{ id: 1, title: 'Audible', audible: true }, { id: 2, title: 'Captured', audible: false }],
+      update: async id => ({ id, active: true, windowId: 4 }),
+    },
+    commands: { getAll: async () => [{ name: 'volume-up', shortcut: 'Alt+Up' }] },
     storage: { session: {
       get: async () => structuredClone(state.memory),
       set: async value => Object.assign(state.memory, structuredClone(value)),
     }, local: {
-      get: async () => ({ settings: state.settings }),
-      set: async value => { state.settings = value.settings; },
+      get: async () => ({ ...structuredClone(state.local), settings: state.settings }),
+      set: async value => { Object.assign(state.local, structuredClone(value)); if ('settings' in value) state.settings = value.settings; },
     } },
     offscreen: { createDocument: async () => { state.exists = true; state.created++; } },
     tabCapture: { getMediaStreamId: async () => { state.captures++; return 'stream-' + state.captures; } },
@@ -147,4 +153,42 @@ test('fullscreen messages use the real top-frame sender, never a supplied tab ID
   assert.equal(backgroundMessage({ ...message, type: 'start' }, sender, 'test'), undefined);
   const popup = { target: 'background', type: 'start', tabId: 1 };
   assert.equal(backgroundMessage(popup, { id: 'test' }, 'test'), popup);
+});
+
+test('manual controls and shortcuts reach only their tab and never recapture active audio', async () => {
+  const { state, controller } = fixture();
+  await controller.handle({ type: 'status', tabId: 2 }); // This tab retains its own default.
+  await controller.handle({ type: 'shortcut', name: 'volume-up' });
+  assert.equal(state.captures, 1);
+  assert.equal(state.messages.find(m => m.type === 'start').controls.volumePercent, 110);
+  await controller.handle({ type: 'set-audio', tabId: 1, controls: { eqPreset: 'bass', volumePercent: 350 }, activate: true });
+  assert.equal((await controller.handle({ type: 'status', tabId: 2 })).controls.volumePercent, 100);
+  assert.equal((await controller.handle({ type: 'status', tabId: 2 })).controls.eqPreset, 'default');
+  await controller.handle({ type: 'shortcut', name: 'volume-mute' });
+  await controller.handle({ type: 'shortcut', name: 'volume-mute' });
+  assert.equal((await controller.handle({ type: 'status', tabId: 1 })).controls.volumePercent, 350);
+  assert.equal(state.captures, 1);
+  const updates = state.messages.filter(m => m.type === 'controls');
+  assert.ok(updates.every(m => m.tabId === 1));
+  assert.equal(updates.at(-1).controls.muted, false);
+});
+
+test('navigation replaces site controls in a running session; theme and tab list work independently', async () => {
+  const { state, controller } = fixture();
+  await controller.handle({ type: 'set-audio', tabId: 2, controls: { volumePercent: 250 }, activate: true });
+  state.url = 'https://different.org/watch';
+  // Reading the tab list may observe navigation before its queued URL event.
+  const navigated = await controller.handle({ type: 'list-audio-tabs' });
+  assert.equal(navigated.tabs.find(tab => tab.id === 2).controls.volumePercent, 100);
+  assert.equal(state.messages.filter(m => m.type === 'controls').at(-1).tabId, 2);
+  assert.equal(state.messages.filter(m => m.type === 'controls').at(-1).controls.volumePercent, 100);
+  await controller.handle({ type: 'auto-check', tabId: 2 });
+  assert.equal(state.messages.filter(m => m.type === 'controls').at(-1).controls.volumePercent, 100);
+  assert.equal(state.captures, 1);
+  await controller.handle({ type: 'set-preferences', preferences: { theme: 'light' } });
+  assert.equal((await controller.handle({ type: 'status', tabId: 2 })).preferences.theme, 'light');
+  const list = await controller.handle({ type: 'list-audio-tabs' });
+  assert.deepEqual(list.tabs.map(tab => tab.id), [1, 2]);
+  assert.equal(list.tabs[1].active, true);
+  assert.equal((await controller.handle({ type: 'activate-audio-tab', tabId: 2 })).ok, true);
 });

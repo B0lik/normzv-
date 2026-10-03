@@ -1,4 +1,6 @@
 import { sanitizeSettings } from './shared/settings.js';
+import { sanitizeAudioControls } from './shared/audio-controls.js';
+import { createEqualizer } from './audio/equalizer.js';
 
 const sessions = new Map();
 const errors = new Map();
@@ -22,6 +24,7 @@ async function dispose(session) {
   session.node?.disconnect();
   if (session.node) session.node.port.onmessage = null;
   session.source?.disconnect();
+  session.equalizer?.disconnect();
   session.stream?.getTracks().forEach((track) => track.stop());
   if (session.context && session.context.state !== 'closed') {
     await session.context.close().catch(() => {});
@@ -40,7 +43,7 @@ async function stop(tabId, failure, expectedSession) {
   }
 }
 
-async function start({ tabId, streamId, settings, automatic }) {
+async function start({ tabId, streamId, settings, controls, automatic }) {
   if (sessions.has(tabId)) return getStatus(tabId);
   errors.delete(tabId);
   const session = { automatic: !!automatic };
@@ -69,10 +72,12 @@ async function start({ tabId, streamId, settings, automatic }) {
     session.node = new AudioWorkletNode(session.context, 'tab-normalizer', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
       channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
-      processorOptions: { settings: sanitizeSettings(settings) },
+      processorOptions: { settings: sanitizeSettings(settings), controls: sanitizeAudioControls(controls) },
     });
     session.source = session.context.createMediaStreamSource(session.stream);
-    session.source.connect(session.node).connect(session.context.destination);
+    session.equalizer = createEqualizer(session.context, controls);
+    session.source.connect(session.equalizer.input);
+    session.equalizer.output.connect(session.node).connect(session.context.destination);
     await withTimeout(session.context.resume(), 'Браузер не разрешил воспроизведение. Отключите и включите обработку снова.');
     if (session.context.state !== 'running' || tracks.some((track) => track.readyState === 'ended')) {
       throw new Error('Аудиопоток завершился при запуске. Попробуйте включить снова.');
@@ -108,6 +113,15 @@ async function handle(message) {
       await stop(message.tabId);
       errors.delete(message.tabId);
       return getStatus(message.tabId);
+    case 'controls': {
+      const session = sessions.get(message.tabId);
+      if (session) {
+        const controls = sanitizeAudioControls(message.controls);
+        session.equalizer.update(controls);
+        session.node.port.postMessage({ type: 'controls', controls });
+      }
+      return getStatus(message.tabId);
+    }
     case 'settings':
       for (const session of sessions.values()) {
         session.node.port.postMessage({ type: 'settings', settings: sanitizeSettings(message.settings) });

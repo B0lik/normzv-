@@ -3,10 +3,11 @@ import { NormalizerCore } from './normalizer-core.js';
 class NormalizerProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    this.core = new NormalizerCore(sampleRate, options.processorOptions?.settings);
+    this.core = new NormalizerCore(sampleRate, options.processorOptions?.settings, options.processorOptions?.controls);
     this.frames = 0;
     this.port.onmessage = ({ data }) => {
       if (data?.type === 'settings') this.core.configure(data.settings);
+      if (data?.type === 'controls') this.core.configureControls(data.controls);
     };
   }
 

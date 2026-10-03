@@ -9,6 +9,8 @@ assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.minimum_chrome_version, '116');
 assert.deepEqual(manifest.permissions.toSorted(), ['activeTab', 'offscreen', 'scripting', 'storage', 'tabCapture', 'tabs']);
 assert.ok(!manifest.host_permissions);
+assert.equal(Object.values(manifest.commands).filter(command => command.suggested_key).length, 4);
+assert.deepEqual(Object.keys(manifest.commands).toSorted(), ['_execute_action', 'volume-down', 'volume-mute', 'volume-reset', 'volume-up']);
 for (const path of [manifest.background.service_worker, manifest.action.default_popup, 'offscreen.html', 'fullscreen-observer.js']) {
   assert.ok(existsSync(resolve(root, path)), `Missing ${path}`);
 }

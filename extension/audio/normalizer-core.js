@@ -1,9 +1,10 @@
 import { MODES, sanitizeSettings, dbToGain, gainToDb } from '../shared/settings.js';
+import { sanitizeAudioControls } from '../shared/audio-controls.js';
 
 // Linked stereo RMS automatic gain + lookahead sample-peak limiter.
 // The same gain is applied to both channels to keep the stereo image intact.
 export class NormalizerCore {
-  constructor(sampleRate, settings = {}) {
+  constructor(sampleRate, settings = {}, controls = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000) {
       throw new RangeError('Unsupported sample rate');
     }
@@ -31,7 +32,10 @@ export class NormalizerCore {
     this.meterOutput = 0;
     this.meterPeak = 0;
     this.meterFrames = 0;
+    this.volumeCoeff = Math.exp(-1 / (sampleRate * 0.02));
     this.configure(settings);
+    this.configureControls(controls);
+    this.manualGain = this.controls.muted ? 0 : this.controls.volumePercent / 100;
   }
 
   configure(settings) {
@@ -44,6 +48,8 @@ export class NormalizerCore {
     this.gainRise = Math.exp(-1 / (this.sampleRate * mode.rise));
     this.gainFall = Math.exp(-1 / (this.sampleRate * mode.fall));
   }
+
+  configureControls(controls) { this.controls = sanitizeAudioControls(controls); }
 
   process(input, output) {
     if (!output.length) return;
@@ -60,7 +66,10 @@ export class NormalizerCore {
       this.power = powerCoeff * this.power + (1 - powerCoeff) * energy;
       let desiredGain;
       let gainCoeff;
-      if (this.power < this.gatePower) {
+      if (!this.controls.smartVolume) {
+        desiredGain = 1;
+        gainCoeff = this.volumeCoeff;
+      } else if (this.power < this.gatePower) {
         // Never increase gain for silence or near-silence. This is not a mute gate.
         desiredGain = Math.min(this.gain, 1);
         gainCoeff = this.silenceRelease;
@@ -70,11 +79,13 @@ export class NormalizerCore {
         gainCoeff = desiredGain < this.gain ? this.gainFall : this.gainRise;
       }
       this.gain = gainCoeff * this.gain + (1 - gainCoeff) * desiredGain;
+      const manualTarget = this.controls.muted ? 0 : this.controls.volumePercent / 100;
+      this.manualGain = this.volumeCoeff * this.manualGain + (1 - this.volumeCoeff) * manualTarget;
       const write = this.position % this.size;
       let peak = 0;
       for (let c = 0; c < channels; c++) {
         const raw = input[c]?.[i] ?? input[0]?.[i] ?? 0;
-        const x = (Number.isFinite(raw) ? raw : 0) * this.gain;
+        const x = (Number.isFinite(raw) ? raw : 0) * this.gain * this.manualGain;
         this.delay[c][write] = x;
         peak = Math.max(peak, Math.abs(x));
       }
@@ -99,7 +110,7 @@ export class NormalizerCore {
       let outEnergy = 0;
       for (let c = 0; c < channels; c++) {
         const delayed = this.position >= this.delaySamples ? this.delay[c][read] : 0;
-        const y = Math.max(-this.ceiling, Math.min(this.ceiling, delayed * this.limiterGain));
+        const y = manualTarget === 0 ? 0 : Math.max(-this.ceiling, Math.min(this.ceiling, delayed * this.limiterGain));
         output[c][i] = y;
         outEnergy += y * y;
         this.meterPeak = Math.max(this.meterPeak, Math.abs(y));
@@ -118,7 +129,7 @@ export class NormalizerCore {
       inputDb: gainToDb(Math.sqrt(this.meterInput / n)),
       outputDb: gainToDb(Math.sqrt(this.meterOutput / n)),
       peakDb: gainToDb(this.meterPeak),
-      gainDb: gainToDb(this.gain * this.limiterGain),
+      gainDb: gainToDb(this.gain * this.manualGain * this.limiterGain),
     };
     this.meterInput = this.meterOutput = this.meterPeak = this.meterFrames = 0;
     return levels;

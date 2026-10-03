@@ -11,7 +11,7 @@
     <header>
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 14v4m6-9v14m6-18v22m6-18v14m6-9v4"/></svg></span>
       <div><h1>Ровный звук</h1><p class="subtitle">Тихое слышно. Громкое мягче.</p></div>
-      <span class="version">0.2.1</span>
+      <span class="version">0.3.0</span>
     </header>
 
     <section class="session" aria-label="Текущая вкладка">
@@ -21,6 +21,48 @@
       <p class="session-note">Обрабатывается весь звук этой вкладки.</p>
     </section>
 
+    <div class="quick-actions">
+      <button id="smart-volume" class="audio-control" aria-pressed="true" disabled>Умная громкость<br><small>Выровнять тихое и громкое</small></button>
+      <button id="shortcuts-button">Горячие клавиши<br><small>Управлять без мыши</small></button>
+      <button id="theme-toggle" disabled>Светлая тема<br><small>Вид интерфейса</small></button>
+    </div>
+
+    <section class="volume-panel" aria-label="Громкость вкладки">
+      <div class="label-row"><label for="master-volume">Громкость вкладки</label><span class="volume-entry"><input id="master-number" class="audio-control" type="number" min="0" max="600" step="1" value="100" aria-label="Громкость в процентах" disabled><span>%</span></span></div>
+      <input id="master-volume" class="audio-control" type="range" min="0" max="600" step="1" value="100" aria-label="Громкость вкладки" disabled>
+      <div class="range-labels"><span>0% · тишина</span><span>600% · усиление ×6</span></div>
+      <div class="volume-buttons"><button id="mute" class="audio-control" aria-pressed="false" disabled>Без звука</button><button id="reset-volume" class="audio-control" disabled>Сбросить к 100%</button></div>
+      <p class="help">100% — без дополнительного усиления. Умная громкость и эквалайзер работают отдельно.</p>
+    </section>
+
+    <section class="equalizer-panel" aria-label="Эквалайзер">
+      <div class="label-row"><h2>Эквалайзер</h2><span id="eq-state" class="hint">Без окраски</span></div>
+      <div class="eq-presets" role="group" aria-label="Пресет эквалайзера">
+        <button class="audio-control" data-eq="default" aria-pressed="true" disabled>Обычный</button>
+        <button class="audio-control" data-eq="voice" aria-pressed="false" disabled>Голос</button>
+        <button class="audio-control" data-eq="bass" aria-pressed="false" disabled>Бас</button>
+      </div>
+      <p id="eq-description" class="help">Ровная частотная характеристика без усиления отдельных полос.</p>
+      <details class="secondary-panel"><summary>Настроить 10 полос</summary><div id="eq-bands" class="eq-bands"></div><p class="help">Низкие частоты — бас; средние — речь; высокие — ясность. Каждая полоса от −12 до +12 dB.</p></details>
+    </section>
+
+    <details class="secondary-panel" id="normalizer-panel"><summary>Настройка умной громкости</summary>
+      <section class="controls" aria-label="Настройки выравнивания">
+        <div class="label-row"><h2>Выравнивание</h2><span class="hint">Сила эффекта</span></div>
+        <div class="modes" role="group" aria-label="Сила выравнивания">
+          <button data-mode="gentle" aria-pressed="false" disabled>Мягко</button>
+          <button data-mode="balanced" aria-pressed="false" disabled>Средне</button>
+          <button data-mode="strong" aria-pressed="true" disabled>Сильно</button>
+        </div>
+        <p id="mode-description" class="description">Максимально сближает тихие и громкие фрагменты.</p>
+        <div class="label-row volume-label"><label for="volume">Базовый уровень выравнивания</label><output id="volume-value" for="volume">−18 dBFS</output></div>
+        <input id="volume" type="range" min="-30" max="-12" step="1" value="-18" disabled>
+        <div class="range-labels"><span>Тише</span><span>Громче</span></div>
+        <p class="help">Сила и базовый уровень общие для всех вкладок. При выключенной умной громкости они не применяются.</p>
+      </section>
+    </details>
+
+    <details class="secondary-panel"><summary>Автоподключение</summary>
     <section class="automatic-panel" aria-label="Автоподключение">
       <div class="label-row"><h2>Автоподключение</h2><button id="auto-toggle" class="auto-switch" role="switch" aria-checked="false" aria-label="Автоподключение" disabled><span aria-hidden="true"></span></button></div>
       <div class="auto-scopes" role="group" aria-label="Где подключаться автоматически">
@@ -38,19 +80,12 @@
       <p id="auto-status" class="description auto-status" aria-live="polite">Автоподключение выключено.</p>
       <p class="auto-note">В новой вкладке нажмите значок расширения — это требование Chrome. Повторное нажатие может потребоваться после смены сайта.</p>
     </section>
+    </details>
 
-    <section class="controls" aria-label="Настройки">
-      <div class="label-row"><h2>Выравнивание</h2><span class="hint">Сила эффекта</span></div>
-      <div class="modes" role="group" aria-label="Сила выравнивания">
-        <button data-mode="gentle" aria-pressed="false" disabled>Мягко</button>
-        <button data-mode="balanced" aria-pressed="false" disabled>Средне</button>
-        <button data-mode="strong" aria-pressed="true" disabled>Сильно</button>
-      </div>
-      <p id="mode-description" class="description">Максимально сближает тихие и громкие фрагменты.</p>
-      <div class="label-row volume-label"><label for="volume">Итоговая громкость</label><output id="volume-value" for="volume">50%</output></div>
-      <input id="volume" type="range" min="-30" max="-12" step="1" value="-18" disabled>
-      <div class="range-labels"><span>Тише</span><span>Громче</span></div>
-    </section>
+    <details id="shortcuts-panel" class="secondary-panel"><summary>Горячие клавиши</summary><ul id="shortcut-list" class="shortcut-list"></ul><button id="configure-shortcuts" class="secondary-button">Изменить в Chrome</button><p class="help">Здесь показаны реальные назначения. «Не назначено» означает, что сочетание свободно для настройки или занято другим расширением.</p></details>
+    <details class="secondary-panel"><summary>Память настроек сайтов</summary><label class="remember-label"><input id="remember-sites" type="checkbox" checked disabled>Запоминать громкость и эквалайзер сайтов</label><p id="memory-description" class="help"></p><button id="forget-site" class="secondary-button" disabled>Забыть настройки текущего сайта</button><p class="help">Запоминаются громкость, эквалайзер и умная громкость. Mute действует только в текущей вкладке.</p></details>
+
+    <details class="secondary-panel"><summary>Звучащие вкладки</summary><ul id="audio-tabs" class="audio-tabs"></ul><button id="refresh-tabs" class="secondary-button">Обновить список</button></details>
 
     <section class="meters" aria-label="Уровни звука">
       <div class="label-row"><h2>Сейчас</h2><span id="gain" class="hint">Нет сигнала</span></div>
@@ -59,7 +94,7 @@
     </section>
 
     <p id="error" class="error" role="alert" hidden></p>
-    <footer>Настройки общие для включённых вкладок.<br>В паузах усиление снижается, чтобы не разгонять шум.</footer>
+    <footer>Громкость и эквалайзер — для этой вкладки.<br>Звук обрабатывается локально. Пики ограничиваются.</footer>
   </main>
   <script type="module" src="popup.js"></script>
 </body>

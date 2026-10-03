@@ -96,3 +96,43 @@ test('invalid settings, non-finite input and missing channels remain safe', () =
   assert.ok(output.every(channel => channel.every(x => x === 0)));
   assert.ok(Object.values(core.takeLevels()).every(Number.isFinite));
 });
+
+test('manual gain supplies 25%, 100% and 600% when smart volume is off and headroom exists', () => {
+  for (const volumePercent of [25, 100, 600]) {
+    const core = new NormalizerCore(rate, {}, { smartVolume: false, volumePercent });
+    const output = rmsDb(render(core, 1, sine(-36))[0].subarray(rate / 2));
+    assert.ok(Math.abs(output - (-36 + gainToDb(volumePercent / 100))) < 0.02);
+  }
+});
+
+test('mute and zero volume immediately silence buffered audio and unmute preserves the set level', () => {
+  const core = new NormalizerCore(rate, {}, { smartVolume: false, volumePercent: 250 });
+  render(core, 1, sine(-36));
+  core.configureControls({ smartVolume: false, volumePercent: 250, muted: true });
+  assert.ok(render(core, 0.1, sine(-36))[0].every(value => value === 0));
+  core.configureControls({ smartVolume: false, volumePercent: 250, muted: false });
+  const resumed = rmsDb(render(core, 1, sine(-36))[0].subarray(rate / 2));
+  assert.ok(Math.abs(resumed - (-36 + gainToDb(2.5))) < 0.02);
+  core.configureControls({ smartVolume: false, volumePercent: 0 });
+  assert.ok(render(core, 0.1, sine(-36))[0].every(value => value === 0));
+});
+
+test('disabling smart volume returns to manual gain without recreating the processor', () => {
+  const core = new NormalizerCore(rate);
+  const before = rmsDb(render(core, 2, sine(-36))[0].subarray(rate));
+  core.configureControls({ smartVolume: false, volumePercent: 100 });
+  const after = rmsDb(render(core, 1, sine(-36))[0].subarray(rate / 2));
+  assert.ok(before > -23);
+  assert.ok(Math.abs(after + 36) < 0.02);
+});
+
+test('600% boost and aggressive signals stay below the limiter ceiling with and without AGC', () => {
+  for (const smartVolume of [true, false]) {
+    const core = new NormalizerCore(rate, {}, { smartVolume, volumePercent: 600 });
+    const output = render(core, 1, n => [n % 53 === 0 ? 50 : Math.sin(n), -Math.sin(n) * 3]);
+    for (const channel of output) for (const value of channel) {
+      assert.ok(Number.isFinite(value));
+      assert.ok(Math.abs(value) <= dbToGain(-1) + 1e-7);
+    }
+  }
+});

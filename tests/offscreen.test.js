@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 let listener;
-const resources = { streams: [], contexts: [], nodes: [], fail: false, notices: [], constraints: null };
+const resources = { streams: [], contexts: [], nodes: [], filters: [], fail: false, notices: [], constraints: null };
 globalThis.chrome = { runtime: {
   id: 'test',
   onMessage: { addListener: fn => { listener = fn; } },
@@ -26,16 +26,22 @@ Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { me
   },
 } } });
 class Source {
-  connect(node) { return node; }
+  connect(node) { (this.connections ||= []).push(node); return node; }
   disconnect() { this.disconnected = true; }
 }
 globalThis.AudioContext = class {
   constructor() {
     this.state = 'suspended'; this.destination = {};
+    this.sampleRate = 48000; this.currentTime = 0;
     this.audioWorklet = { addModule: async () => { if (resources.fail) throw new Error('load failed'); } };
     resources.contexts.push(this);
   }
   createMediaStreamSource() { this.source = new Source(); return this.source; }
+  createBiquadFilter() {
+    const param = () => ({ value: 0, cancelAndHoldAtTime() {}, setTargetAtTime(value) { this.value = value; } });
+    const filter = Object.assign(new Source(), { frequency: param(), Q: param(), gain: param() });
+    resources.filters.push(filter); return filter;
+  }
   async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; this.onstatechange?.(); }
 };
@@ -136,4 +142,25 @@ test('automatic ownership is available after worker recreation via the session l
   assert.ok(list.sessions.some(s => s.tabId === 8 && s.autoOwned));
   await command('stop', 8);
   assert.ok(!(await command('sessions')).sessions.some(s => s.tabId === 8));
+});
+
+test('equalizer precedes limiter; controls affect only their live tab without recapture', async () => {
+  await command('start', 20, { controls: { eqPreset: 'voice', volumePercent: 200 } });
+  const first = resources.nodes.at(-1);
+  const context = resources.contexts.at(-1);
+  const filters = resources.filters.slice(-10);
+  assert.equal(context.source.connections[0], filters[0]);
+  assert.equal(filters.at(-1).connections[0], first);
+  assert.equal(filters[6].gain.value, 4);
+  await command('start', 21);
+  const second = resources.nodes.at(-1);
+  const count = resources.streams.length;
+  await command('controls', 20, { controls: { eqPreset: 'bass', volumePercent: 600, smartVolume: false, muted: true } });
+  assert.equal(first.port.messages.at(-1).controls.volumePercent, 600);
+  assert.equal(first.port.messages.at(-1).controls.smartVolume, false);
+  assert.equal(filters[0].gain.value, 6);
+  assert.equal(second.port.messages.length, 0);
+  assert.equal(resources.streams.length, count);
+  await command('stop', 20); await command('stop', 21);
+  assert.ok(filters.every(filter => filter.disconnected));
 });
